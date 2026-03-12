@@ -1,6 +1,8 @@
 package config
 
 import (
+	"errors"
+	"fmt"
 	"os"
 
 	"gopkg.in/yaml.v2"
@@ -46,8 +48,45 @@ func LoadConfig(file string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	if err := Validate(&cfg); err != nil {
+		return nil, err
+	}
 	return &cfg, nil
+}
+
+// Validate 校验配置合法性。
+func Validate(cfg *Config) error {
+	if cfg.Main.ExecutionCycleMinutes <= 0 {
+		return errors.New("main.executionCycleMinutes must be positive")
+	}
+	if len(cfg.Domains) == 0 {
+		return errors.New("domains cannot be empty")
+	}
+	providerNames := make(map[string]bool)
+	for _, p := range cfg.Providers {
+		if p.Name == "" {
+			return errors.New("provider name cannot be empty")
+		}
+		providerNames[p.Name] = true
+	}
+	for i, d := range cfg.Domains {
+		if d.SubDomain == "" {
+			return fmt.Errorf("domains[%d]: subDomain is required", i)
+		}
+		if d.PrimaryDomain == "" {
+			return fmt.Errorf("domains[%d]: primaryDomain is required", i)
+		}
+		if d.RecordType == "" {
+			return fmt.Errorf("domains[%d]: recordType is required", i)
+		}
+		if d.Provider == "" {
+			return fmt.Errorf("domains[%d]: provider is required", i)
+		}
+		if !providerNames[d.Provider] {
+			return fmt.Errorf("domains[%d]: unknown provider %q", i, d.Provider)
+		}
+	}
+	return nil
 }
 
 type Line struct {

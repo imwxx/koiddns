@@ -1,0 +1,12 @@
+<%+header%>
+<h2 name="content"><%:KoidDNS%> - <%:Format check%></h2>
+<div class="cbi-section">
+	<% if ok then %>
+	<p style="color: green;"><%:Config is valid.%></p>
+	<% else %>
+	<p style="color: red;"><%:Config has errors:%></p>
+	<pre style="background:#f5f5f5; padding: 0.5em;"><%=message%></pre>
+	<% end %>
+	<p><a href="<%=url("admin/services/koiddns/general")%>"><%:Back to configuration%></a></p>
+</div>
+<%+footer%>

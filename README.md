@@ -9,8 +9,12 @@
 
 ```
 koiddns 使用说明：
---help      显示帮助信息
---demo FILE 生成示例配置文件，参数为文件路径
+--help                  显示帮助信息
+--generate-config FILE  生成示例配置文件，参数为文件路径
+--config FILE           指定配置文件，参数为文件路径
+--daemon                以守护进程方式运行
+--pidfile FILE          守护进程 PID 文件路径（默认 /var/run/koiddns.pid）
+--logfile FILE          守护进程日志文件路径（默认 /var/log/koiddns.log）
 
 配置文件示例（/etc/config/koiddns）：
 main:
@@ -57,6 +61,20 @@ domains:
 
 ## 2.2.run
 
+前台运行：
 ```
 /usr/bin/koiddns --config /etc/config/koiddns
 ```
+
+守护进程运行（可指定 PID/日志路径）：
+```
+/usr/bin/koiddns --config /etc/config/koiddns --daemon
+/usr/bin/koiddns --config /etc/config/koiddns --daemon --pidfile /var/run/koiddns.pid --logfile /var/log/koiddns.log
+```
+
+## 2.3 OpenWRT / luci-app-koiddns
+
+在 OpenWRT 上可安装配套 **luci-app-koiddns**，提供：
+
+- **配置管理**：直接读写 `/etc/config/koiddns`（YAML），在「General Settings」页展示并编辑；保存前自动做格式校验，也可通过「Validate format」单独校验当前文件。
+- **服务进程管理**：在「Service」页查看运行状态，并执行启动、停止、重启。

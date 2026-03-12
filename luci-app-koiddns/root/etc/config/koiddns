@@ -1,0 +1,26 @@
+main:
+  executionCycleMinutes: 5
+providers:
+- name: aliyun
+  accessKeyId: your_aliyun_access_key_id
+  accessKeySecret: your_aliyun_access_key_secret
+- name: tencent
+  secretId: your_tencent_secret_id
+  secretKey: your_tencent_secret_key
+domains:
+- subDomain: www
+  primaryDomain: example.com
+  value: ""
+  provider: aliyun
+  recordType: A
+  recordId: ""
+  line: default
+  priority: "10"
+- subDomain: mail
+  primaryDomain: anotherdomain.com
+  value: ""
+  provider: tencent
+  recordType: CNAME
+  recordId: ""
+  line: unicom
+  priority: "20"

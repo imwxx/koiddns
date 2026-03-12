@@ -6,79 +6,82 @@ import (
 	"strconv"
 
 	"github.com/imwxx/koiddns/config"
-
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
 	dnspod "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/dnspod/v20210323"
 )
 
-func UpdateTencentDNS(config config.ProviderConfig, subDomain, primaryDomain, recordType, recordId, line, priority, ip string) {
-	credential := common.NewCredential(config.SecretId, config.SecretKey)
+func UpdateTencentDNS(c config.ProviderConfig, subDomain, primaryDomain, recordType, recordId, line, priority, ip string) error {
+	credential := common.NewCredential(c.SecretId, c.SecretKey)
 	cpf := profile.NewClientProfile()
 	cpf.HttpProfile.Endpoint = "dnspod.tencentcloudapi.com"
-	client, _ := dnspod.NewClient(credential, "", cpf)
+	client, err := dnspod.NewClient(credential, "", cpf)
+	if err != nil {
+		return fmt.Errorf("create tencent dnspod client: %w", err)
+	}
 
 	cacheKey := generateCacheKey("tencent", subDomain, primaryDomain, recordType)
 	cachedRecord, _ := GetRecord(cacheKey)
 
 	var existingValue string
-
 	if cachedRecord != nil {
 		recordId = cachedRecord.RecordId
 		existingValue = cachedRecord.RecordValue
 	}
 
 	if recordId == "" {
-		// 尝试获取现有的记录ID
-		recordId = getTencentRecordId(client, subDomain, primaryDomain, recordType, line)
+		recordId, err = getTencentRecordId(client, subDomain, primaryDomain, recordType, line)
+		if err != nil {
+			return err
+		}
 		if recordId != "" {
-			// 保存到缓存
 			SetRecord(cacheKey, recordId, ip)
 		}
 	}
 
 	if recordId == "" {
-		// 新增域名解析
 		resp, err := addTencentRecord(client, subDomain, primaryDomain, recordType, line, priority, ip)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		recordId = strconv.FormatUint(*resp.Response.RecordId, 10)
-
 		SetRecord(cacheKey, recordId, ip)
-	} else {
-		// 更新域名解析
-		if existingValue != ip {
-			updateTencentRecord(client, recordId, subDomain, primaryDomain, recordType, line, priority, ip)
-			SetRecord(cacheKey, recordId, ip)
-		}
+		return nil
 	}
+
+	if existingValue != ip {
+		if err := updateTencentRecord(client, recordId, subDomain, primaryDomain, recordType, line, priority, ip); err != nil {
+			return err
+		}
+		log.Printf("Updated Tencent DNS record %s.%s (%s) to %s", subDomain, primaryDomain, recordType, ip)
+	}
+	SetRecord(cacheKey, recordId, ip)
+	return nil
 }
 
-func getTencentRecordId(client *dnspod.Client, subDomain, primaryDomain, recordType, line string) string {
+func getTencentRecordId(client *dnspod.Client, subDomain, primaryDomain, recordType, line string) (string, error) {
 	request := dnspod.NewDescribeRecordListRequest()
-
 	request.Domain = common.StringPtr(primaryDomain)
 	request.RecordType = common.StringPtr(recordType)
 	request.RecordLine = common.StringPtr(line)
 
 	response, err := client.DescribeRecordList(request)
 	if err != nil {
-		log.Fatal(err)
+		return "", fmt.Errorf("describe record list: %w", err)
 	}
 
 	for _, record := range response.Response.RecordList {
-		if *record.Name == subDomain {
-			return strconv.FormatUint(*record.RecordId, 10)
+		if record.Name != nil && *record.Name == subDomain && record.RecordId != nil {
+			return strconv.FormatUint(*record.RecordId, 10), nil
 		}
 	}
-	return ""
+	return "", nil
 }
 
-func updateTencentRecord(client *dnspod.Client, recordId, subDomain, primaryDomain, recordType, line, priority, ip string) {
+func updateTencentRecord(client *dnspod.Client, recordId, subDomain, primaryDomain, recordType, line, priority, ip string) error {
 	recordIdUint64, err := strconv.ParseUint(recordId, 10, 64)
 	if err != nil {
-		log.Fatalf("无法将 recordId 转换为 uint64: %v", err)
+		return fmt.Errorf("invalid recordId %q: %w", recordId, err)
 	}
 
 	request := &dnspod.ModifyRecordRequest{}
@@ -90,17 +93,16 @@ func updateTencentRecord(client *dnspod.Client, recordId, subDomain, primaryDoma
 	if priority != "" {
 		prio, err := strconv.ParseUint(priority, 10, 64)
 		if err != nil {
-			log.Fatalf("无法将 priority 转换为 uint64: %v", err)
+			return fmt.Errorf("invalid priority %q: %w", priority, err)
 		}
-		request.Weight = common.Uint64Ptr(uint64(prio))
+		request.Weight = common.Uint64Ptr(prio)
 	}
 
 	_, err = client.ModifyRecord(request)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("modify record: %w", err)
 	}
-
-	log.Printf("Updated Tencent DNS record %s (%s) to %s with line %s and priority %s", fmt.Sprintf(`%s.%s`, subDomain, primaryDomain), recordType, ip, line, priority)
+	return nil
 }
 
 func addTencentRecord(client *dnspod.Client, subDomain, primaryDomain, recordType, line, priority, ip string) (*dnspod.CreateRecordResponse, error) {
@@ -113,17 +115,15 @@ func addTencentRecord(client *dnspod.Client, subDomain, primaryDomain, recordTyp
 	if priority != "" {
 		prio, err := strconv.ParseUint(priority, 10, 64)
 		if err != nil {
-			log.Fatalf("无法将 priority 转换为 uint64: %v", err)
+			return nil, fmt.Errorf("invalid priority %q: %w", priority, err)
 		}
-		request.Weight = common.Uint64Ptr(uint64(prio))
+		request.Weight = common.Uint64Ptr(prio)
 	}
 
 	resp, err := client.CreateRecord(request)
 	if err != nil {
-		return resp, err
+		return nil, fmt.Errorf("create record: %w", err)
 	}
-
-	log.Printf("Added Tencent DNS record %s (%s) with value %s, line %s and priority %s", fmt.Sprintf(`%s.%s`, subDomain, primaryDomain), recordType, ip, line, priority)
-
+	log.Printf("Added Tencent DNS record %s.%s (%s) value %s", subDomain, primaryDomain, recordType, ip)
 	return resp, nil
 }

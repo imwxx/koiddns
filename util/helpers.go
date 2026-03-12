@@ -6,7 +6,11 @@ func ShowHelp() {
 	fmt.Print(`koiddns 使用说明：
 --help                  显示帮助信息
 --generate-config FILE  生成示例配置文件，参数为文件路径
+--validate              校验配置文件格式后退出（与 --config 配合）
 --config FILE           指定配置文件，参数为文件路径
+--daemon                以守护进程方式运行
+--pidfile FILE          守护进程 PID 文件路径（默认 /var/run/koiddns.pid）
+--logfile FILE          守护进程日志文件路径（默认 /var/log/koiddns.log）
 
 配置文件示例（/etc/config/koiddns）：
 

@@ -4,34 +4,7 @@ import (
 	"sync"
 )
 
-// var (
-// 	cache = struct {
-// 		sync.RWMutex
-// 		Records map[string]map[string]string
-// 	}{
-// 		Records: make(map[string]map[string]string),
-// 	}
-// )
-
-// func getRecordIdFromCache(vendor, domain, recordType string) string {
-// 	cache.RLock()
-// 	defer cache.RUnlock()
-// 	if records, ok := cache.Records[vendor]; ok {
-// 		return records[domain+recordType]
-// 	}
-// 	return ""
-// }
-
-// func setRecordIdToCache(vendor, domain, recordType, recordId string) {
-// 	cache.Lock()
-// 	defer cache.Unlock()
-// 	if cache.Records[vendor] == nil {
-// 		cache.Records[vendor] = make(map[string]string)
-// 	}
-// 	cache.Records[vendor][domain+recordType] = recordId
-// }
-
-// RecordCache stores DNS records and their associated information, considering vendor, domain, and record type.
+// RecordCache 按 vendor、子域名、主域名、记录类型缓存 DNS 记录信息。
 type RecordCache struct {
 	sync.RWMutex
 	cache map[string]*RecordCacheItem

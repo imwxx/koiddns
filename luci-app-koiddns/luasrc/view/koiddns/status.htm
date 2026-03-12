@@ -1,0 +1,40 @@
+<%+header%>
+<h2 name="content"><%:KoidDNS%> - <%:Service%></h2>
+
+<div class="cbi-section">
+	<div class="cbi-section-descr"><%:Service status and control%></div>
+	<table class="cbi-section-table">
+		<tr class="cbi-section-table-titles">
+			<th><%:Status%></th>
+			<th><%:Actions%></th>
+		</tr>
+		<tr class="cbi-section-table-row cbi-rowstyle-1">
+			<td>
+				<% if running then %>
+				<span style="color: green;"><%:Running%></span>
+				<% else %>
+				<span style="color: red;"><%:Stopped%></span>
+				<% end %>
+			</td>
+			<td>
+				<form method="post" action="<%=url("admin/services/koiddns/status")%>" style="display:inline;">
+					<input type="hidden" name="token" value="<%=token%>" />
+					<input type="hidden" name="verb" value="start" />
+					<button type="submit" class="cbi-button cbi-button-apply" <% if running then %>disabled<% end %>><%:Start%></button>
+				</form>
+				<form method="post" action="<%=url("admin/services/koiddns/status")%>" style="display:inline;">
+					<input type="hidden" name="token" value="<%=token%>" />
+					<input type="hidden" name="verb" value="stop" />
+					<button type="submit" class="cbi-button cbi-button-reset" <% if not running then %>disabled<% end %>><%:Stop%></button>
+				</form>
+				<form method="post" action="<%=url("admin/services/koiddns/status")%>" style="display:inline;">
+					<input type="hidden" name="token" value="<%=token%>" />
+					<input type="hidden" name="verb" value="restart" />
+					<button type="submit" class="cbi-button cbi-button-reload"><%:Restart%></button>
+				</form>
+			</td>
+		</tr>
+	</table>
+</div>
+
+<%+footer%>
